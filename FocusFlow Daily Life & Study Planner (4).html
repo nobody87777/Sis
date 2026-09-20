@@ -1,0 +1,1481 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FocusFlow - Daily Life & Study Planner</title>
+
+    <!-- PWA Meta & Web App Manifest -->
+    <meta name="theme-color" content="#2563eb">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="FocusFlow">
+    <link rel="apple-touch-icon" href="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180' viewBox='0 0 512 512' fill='%232563eb'><rect width='512' height='512' rx='100' fill='%232563eb'/><path fill='white' d='M381.25 150.5 217.25 314.5 130.75 228 93.25 265.5 217.25 389.5 418.75 188z'/></svg>">
+    <link id="manifestLink" rel="manifest">
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Canvas Confetti Library for celebrations -->
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+    <script>
+        tailwind.config = {
+            darkMode: 'class',
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0f7ff',
+                            100: '#e0effe',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                            700: '#1d4ed8',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            transition: background-color 0.3s ease, color 0.3s ease;
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: rgba(156, 163, 175, 0.4);
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(156, 163, 175, 0.7);
+        }
+
+        .task-enter {
+            animation: slideIn 0.25s ease-out forwards;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(12px) scale(0.98);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0) scale(1);
+            }
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.88);
+            backdrop-filter: blur(12px);
+        }
+        .dark .glass-panel {
+            background: rgba(15, 23, 42, 0.88);
+            backdrop-filter: blur(12px);
+        }
+
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-800 dark:bg-slate-900 dark:text-slate-100 min-h-screen pb-16">
+
+    <header class="sticky top-0 z-30 glass-panel border-b border-slate-200/80 dark:border-slate-800/80 mb-6">
+        <div class="max-w-6xl mx-auto px-4 py-3.5 flex items-center justify-between">
+            
+            <!-- Brand Logo & Date -->
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 flex items-center justify-center text-white shadow-md shadow-blue-500/20 cursor-pointer" onclick="switchView('home')">
+                    <i class="fa-solid font-bold fa-check-double text-lg"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold bg-gradient-to-r from-blue-600 to-indigo-600 dark:from-blue-400 dark:to-indigo-400 bg-clip-text text-transparent cursor-pointer" onclick="switchView('home')">
+                        FocusFlow
+                    </h1>
+                    <p class="text-xs text-slate-500 dark:text-slate-400 font-medium" id="currentDateDisplay">Loading date...</p>
+                </div>
+            </div>
+
+            <!-- View Navigation Tabs -->
+            <nav class="hidden md:flex items-center p-1 bg-slate-100 dark:bg-slate-800 rounded-xl border border-slate-200/80 dark:border-slate-700/60">
+                <button onclick="switchView('home')" id="navHomeBtn" class="px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm">
+                    <i class="fa-solid fa-house"></i> Home
+                </button>
+                <button onclick="switchView('planner')" id="navPlannerBtn" class="px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
+                    <i class="fa-solid fa-list-check"></i> Planner & Tasks
+                </button>
+                <button onclick="switchView('focus')" id="navFocusBtn" class="px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white">
+                    <i class="fa-solid fa-stopwatch"></i> Focus Hub
+                </button>
+            </nav>
+
+            <!-- Utility Controls (Streak, Audio, Theme) -->
+            <div class="flex items-center space-x-2 sm:space-x-3">
+                <!-- Streak Counter -->
+                <div class="hidden sm:flex items-center space-x-1.5 px-3 py-1.5 bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 rounded-full text-xs font-semibold" title="Daily Streak">
+                    <i class="fa-solid fa-fire text-amber-500 animate-pulse"></i>
+                    <span id="streakCount">1</span> Day Streak
+                </div>
+
+                <!-- Add to Home Screen Button (Always visible button label) -->
+                <button id="installPwaBtn" onclick="handlePwaInstallClick()" class="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white text-xs font-bold shadow-md shadow-blue-500/20 transition active:scale-95" title="Add FocusFlow to Home Screen">
+                    <i class="fa-solid fa-mobile-screen-button text-xs"></i> <span>Install App</span>
+                </button>
+
+                <!-- Mute Toggle -->
+                <button id="soundToggleBtn" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition" title="Toggle Sound FX">
+                    <i id="soundIcon" class="fa-solid fa-volume-high text-sm"></i>
+                </button>
+
+                <!-- Dark Mode Toggle -->
+                <button id="themeToggleBtn" class="p-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 text-slate-600 dark:text-slate-300 transition" title="Toggle Dark/Light Mode">
+                    <i id="themeIcon" class="fa-solid fa-moon text-sm"></i>
+                </button>
+            </div>
+        </div>
+
+        <!-- Mobile Bottom Nav bar for quick view switching -->
+        <div class="md:hidden flex items-center justify-around px-4 py-2 bg-slate-50 dark:bg-slate-900 border-t border-slate-200/80 dark:border-slate-800 text-xs">
+            <button onclick="switchView('home')" id="mobileNavHome" class="flex flex-col items-center gap-1 font-semibold text-blue-600 dark:text-blue-400">
+                <i class="fa-solid fa-house text-sm"></i> Home
+            </button>
+            <button onclick="switchView('planner')" id="mobileNavPlanner" class="flex flex-col items-center gap-1 font-semibold text-slate-500 dark:text-slate-400">
+                <i class="fa-solid fa-list-check text-sm"></i> Tasks
+            </button>
+            <button onclick="switchView('focus')" id="mobileNavFocus" class="flex flex-col items-center gap-1 font-semibold text-slate-500 dark:text-slate-400">
+                <i class="fa-solid fa-stopwatch text-sm"></i> Focus
+            </button>
+        </div>
+    </header>
+
+    <main class="max-w-6xl mx-auto px-4">
+
+        <!-- ================= HOME SCREEN VIEW ================= -->
+        <div id="homeView" class="space-y-6">
+            
+            <!-- Hero Welcome Card -->
+            <div class="relative overflow-hidden rounded-3xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-600 text-white p-6 sm:p-8 shadow-xl">
+                <div class="relative z-10 max-w-2xl">
+                    <div class="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/20 backdrop-blur-md text-xs font-semibold mb-3">
+                        <i class="fa-solid fa-sparkles text-amber-300"></i> Daily Overview
+                    </div>
+                    <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" id="homeGreeting">
+                        Welcome Back, Achiever! 👋
+                    </h2>
+                    <p class="text-blue-100 text-sm leading-relaxed mb-6" id="homeQuote">
+                        "Small daily efforts compound into extraordinary success. Focus on what matters most today."
+                    </p>
+
+                    <div class="flex flex-wrap items-center gap-3">
+                        <button onclick="switchView('planner')" class="px-5 py-2.5 bg-white text-blue-600 hover:bg-blue-50 font-bold rounded-xl shadow-lg transition active:scale-95 text-xs flex items-center gap-2">
+                            <i class="fa-solid fa-plus text-xs"></i> Add New Task
+                        </button>
+                        <button onclick="switchView('focus')" class="px-5 py-2.5 bg-blue-700/60 hover:bg-blue-700 text-white font-semibold rounded-xl border border-white/20 backdrop-blur-md transition text-xs flex items-center gap-2">
+                            <i class="fa-solid fa-stopwatch text-xs"></i> Start Focus Session
+                        </button>
+                        <button onclick="handlePwaInstallClick()" class="px-4 py-2.5 bg-white/20 hover:bg-white/30 text-white font-semibold rounded-xl border border-white/30 backdrop-blur-md transition text-xs flex items-center gap-2">
+                            <i class="fa-solid fa-mobile-screen-button text-xs"></i> Add to Home Screen
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Decorative Background Accent Shapes -->
+                <div class="absolute -right-10 -bottom-10 w-60 h-60 bg-white/10 rounded-full blur-2xl pointer-events-none"></div>
+                <div class="absolute right-20 top-0 w-40 h-40 bg-purple-500/20 rounded-full blur-xl pointer-events-none"></div>
+            </div>
+
+            <!-- Key Metrics Grid -->
+            <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                
+                <!-- Metric 1: Completion Rate -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Completion Rate</p>
+                        <h3 class="text-2xl font-black text-slate-800 dark:text-slate-100" id="homeMetricPercent">0%</h3>
+                        <p class="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1" id="homeMetricRatio">0 of 0 tasks completed</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-blue-50 dark:bg-blue-950/40 text-blue-600 dark:text-blue-400 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-chart-pie"></i>
+                    </div>
+                </div>
+
+                <!-- Metric 2: Active Timers / Tasks Pending -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Tasks Pending</p>
+                        <h3 class="text-2xl font-black text-amber-600 dark:text-amber-400" id="homeMetricPending">0</h3>
+                        <p class="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">Ready to tackle</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-amber-50 dark:bg-amber-950/40 text-amber-600 dark:text-amber-400 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-clock-rotate-left"></i>
+                    </div>
+                </div>
+
+                <!-- Metric 3: Total Tracked Time -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Focused Time</p>
+                        <h3 class="text-2xl font-black text-indigo-600 dark:text-indigo-400" id="homeMetricFocusTime">0m</h3>
+                        <p class="text-[11px] font-medium text-slate-500 dark:text-slate-400 mt-1">Tracked with task timers</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-hourglass-half"></i>
+                    </div>
+                </div>
+
+                <!-- Metric 4: Streak Score -->
+                <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm flex items-center justify-between">
+                    <div>
+                        <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider mb-1">Consistency</p>
+                        <h3 class="text-2xl font-black text-emerald-600 dark:text-emerald-400"><span id="homeMetricStreak">1</span> Days</h3>
+                        <p class="text-[11px] font-medium text-emerald-600 dark:text-emerald-400 mt-1">On a streak! 🔥</p>
+                    </div>
+                    <div class="w-12 h-12 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 text-emerald-600 dark:text-emerald-400 flex items-center justify-center text-xl">
+                        <i class="fa-solid fa-fire"></i>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Home Dashboard Layout Grid -->
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <!-- Left Column: High Priority & Quick Timers (8 cols) -->
+                <div class="lg:col-span-8 space-y-6">
+                    
+                    <!-- Today's Priority Tasks & Live Timers -->
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base flex items-center gap-2">
+                                    <i class="fa-solid fa-list-check text-blue-500"></i> Active Tasks & Timers
+                                </h3>
+                                <p class="text-xs text-slate-400">Start and track timers for individual tasks directly here</p>
+                            </div>
+                            <button onclick="switchView('planner')" class="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline flex items-center gap-1">
+                                View All <i class="fa-solid fa-chevron-right text-[10px]"></i>
+                            </button>
+                        </div>
+
+                        <!-- Home Screen Task Container -->
+                        <div id="homeTaskList" class="space-y-3">
+                            <!-- Dynamically generated tasks with individual timers -->
+                        </div>
+                    </div>
+
+                    <!-- Daily Habit Streak Tracker Widget -->
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm">
+                        <h3 class="font-bold text-slate-800 dark:text-slate-100 text-base mb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-heart-pulse text-rose-500"></i> Daily Health & Study Habits
+                        </h3>
+                        <div class="grid grid-cols-2 sm:grid-cols-4 gap-3" id="habitsContainer">
+                            <!-- Interactive Habit Chips -->
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right Column: Quick Focus & Pro Tips (4 cols) -->
+                <div class="lg:col-span-4 space-y-6">
+                    
+                    <!-- Quick Pomodoro Focus Widget -->
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm">
+                        <h3 class="font-bold text-slate-800 dark:text-slate-100 text-sm mb-3 flex items-center justify-between">
+                            <span class="flex items-center gap-2"><i class="fa-solid fa-bolt text-amber-500"></i> Quick Focus</span>
+                            <span class="text-[11px] font-mono font-semibold text-slate-400" id="homeMiniTimer">25:00</span>
+                        </h3>
+                        <p class="text-xs text-slate-500 dark:text-slate-400 mb-4 leading-relaxed">
+                            Need a quick deep work session? Jump into the Focus Hub with custom ambient sounds.
+                        </p>
+                        <button onclick="switchView('focus')" class="w-full py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white font-semibold rounded-xl text-xs transition shadow-md shadow-indigo-500/20 flex items-center justify-center gap-2">
+                            <i class="fa-solid fa-play text-xs"></i> Open Focus Hub
+                        </button>
+                    </div>
+
+                    <!-- Motivation Card -->
+                    <div class="p-5 rounded-2xl bg-gradient-to-br from-amber-500/10 via-orange-500/10 to-indigo-500/10 border border-amber-500/20 text-slate-800 dark:text-slate-200 text-xs leading-relaxed">
+                        <div class="font-bold text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-2 text-sm">
+                            <i class="fa-solid fa-lightbulb"></i> Productivity Tip
+                        </div>
+                        Assign realistic estimated times to each task before starting. Use the individual task timer to maintain focused sprints without distraction!
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ================= PLANNER & TASKS VIEW ================= -->
+        <div id="plannerView" class="hidden space-y-6">
+            
+            <div class="grid grid-cols-1 lg:grid-cols-12 gap-6">
+
+                <!-- Task Creator & Stats Sidebar (4 cols) -->
+                <div class="lg:col-span-4 space-y-6">
+
+                    <!-- Daily Progress Card -->
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm">
+                        <div class="flex justify-between items-center mb-3">
+                            <h2 class="font-bold text-slate-700 dark:text-slate-200 flex items-center gap-2 text-sm">
+                                <i class="fa-solid fa-chart-line text-blue-500"></i> Progress Overview
+                            </h2>
+                            <span id="progressPercent" class="text-sm font-extrabold text-blue-600 dark:text-blue-400">0%</span>
+                        </div>
+                        <div class="w-full bg-slate-100 dark:bg-slate-700 h-3 rounded-full overflow-hidden mb-4">
+                            <div id="progressBar" class="bg-gradient-to-r from-blue-500 to-indigo-500 h-full rounded-full transition-all duration-500 w-0"></div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-2 text-center text-xs">
+                            <div class="bg-slate-50 dark:bg-slate-900/50 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800">
+                                <div class="text-slate-400 mb-0.5">Total</div>
+                                <div id="statTotal" class="font-bold text-sm text-slate-700 dark:text-slate-200">0</div>
+                            </div>
+                            <div class="bg-emerald-500/10 p-2.5 rounded-xl border border-emerald-500/20">
+                                <div class="text-emerald-600 dark:text-emerald-400 mb-0.5">Done</div>
+                                <div id="statDone" class="font-bold text-sm text-emerald-600 dark:text-emerald-400">0</div>
+                            </div>
+                            <div class="bg-amber-500/10 p-2.5 rounded-xl border border-amber-500/20">
+                                <div class="text-amber-600 dark:text-amber-400 mb-0.5">Left</div>
+                                <div id="statPending" class="font-bold text-sm text-amber-600 dark:text-amber-400">0</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Add Task Card with Integrated Duration Input -->
+                    <div class="bg-white dark:bg-slate-800 rounded-2xl p-5 border border-slate-200/80 dark:border-slate-700/60 shadow-sm">
+                        <h2 class="text-base font-bold text-slate-800 dark:text-slate-100 mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-plus-circle text-blue-500"></i> Add New Task
+                        </h2>
+
+                        <form id="taskForm" class="space-y-3.5" onsubmit="event.preventDefault();">
+                            <div>
+                                <label class="block text-[11px] font-semibold text-slate-400 mb-1 uppercase tracking-wider">Task Description</label>
+                                <input type="text" id="taskInput" placeholder="What are you planning? (e.g., Physics Practice, Read Ch. 3)..." 
+                                    class="w-full px-4 py-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 focus:bg-white dark:focus:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm transition">
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <!-- Category Select -->
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1 uppercase tracking-wider">Category</label>
+                                    <select id="categorySelect" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="homework">📚 Homework</option>
+                                        <option value="study">📖 Study Session</option>
+                                        <option value="workout">🏋️‍♂️ Workout</option>
+                                        <option value="habit">🔥 Habit</option>
+                                        <option value="other">🎯 Other</option>
+                                    </select>
+                                </div>
+
+                                <!-- Priority -->
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1 uppercase tracking-wider">Priority</label>
+                                    <select id="prioritySelect" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                        <option value="medium">Medium Priority</option>
+                                        <option value="high">🔥 High Priority</option>
+                                        <option value="low">🌱 Low Priority</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <div class="grid grid-cols-2 gap-3">
+                                <!-- Scheduled Start Time -->
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1 uppercase tracking-wider">Time</label>
+                                    <input type="time" id="timeInput" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+
+                                <!-- Timer Duration (Minutes) -->
+                                <div>
+                                    <label class="block text-[11px] font-semibold text-slate-400 mb-1 uppercase tracking-wider">Timer (Mins)</label>
+                                    <input type="number" id="durationInput" min="1" max="300" value="25" placeholder="e.g. 25" class="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                </div>
+                            </div>
+
+                            <button type="submit" id="addTaskBtn" class="w-full py-3 bg-blue-600 hover:bg-blue-700 active:scale-[0.99] text-white font-semibold rounded-xl shadow-md shadow-blue-500/20 transition flex items-center justify-center gap-2 text-sm mt-2">
+                                <i class="fa-solid fa-plus text-xs"></i> Add Task with Timer
+                            </button>
+                        </form>
+                    </div>
+
+                </div>
+
+                <!-- Main Task List Container (8 cols) -->
+                <div class="lg:col-span-8 space-y-4">
+                    
+                    <!-- Task List Filter Bar -->
+                    <div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-white dark:bg-slate-800 p-3 rounded-2xl border border-slate-200/80 dark:border-slate-700/60 shadow-sm">
+                        
+                        <!-- Category Filter Tabs -->
+                        <div class="flex items-center gap-1 overflow-x-auto pb-1 sm:pb-0 no-scrollbar text-xs">
+                            <button data-filter="all" class="filter-btn px-3 py-1.5 rounded-lg font-semibold bg-blue-600 text-white transition whitespace-nowrap">All</button>
+                            <button data-filter="homework" class="filter-btn px-3 py-1.5 rounded-lg font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition whitespace-nowrap">📚 Homework</button>
+                            <button data-filter="study" class="filter-btn px-3 py-1.5 rounded-lg font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition whitespace-nowrap">📖 Study</button>
+                            <button data-filter="workout" class="filter-btn px-3 py-1.5 rounded-lg font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition whitespace-nowrap">🏋️ Workout</button>
+                            <button data-filter="habit" class="filter-btn px-3 py-1.5 rounded-lg font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition whitespace-nowrap">🔥 Habits</button>
+                        </div>
+
+                        <!-- Search & Batch Delete -->
+                        <div class="flex items-center gap-2">
+                            <div class="relative flex-grow sm:w-44">
+                                <i class="fa-solid fa-magnifying-glass absolute left-3 top-2.5 text-slate-400 text-xs"></i>
+                                <input type="text" id="searchInput" placeholder="Search tasks..." class="w-full pl-8 pr-3 py-1.5 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg text-xs focus:outline-none focus:ring-1 focus:ring-blue-500">
+                            </div>
+                            <button id="clearCompletedBtn" class="px-2.5 py-1.5 text-xs text-rose-500 hover:bg-rose-50 dark:hover:bg-rose-950/30 rounded-lg transition font-medium flex items-center gap-1" title="Clear completed tasks">
+                                <i class="fa-regular fa-trash-can"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Task Cards List -->
+                    <div id="taskList" class="space-y-3">
+                        <!-- Tasks with individual interactive timers render here -->
+                    </div>
+
+                    <!-- Empty State Display -->
+                    <div id="emptyState" class="hidden text-center py-12 px-4 bg-white dark:bg-slate-800 rounded-2xl border border-dashed border-slate-300 dark:border-slate-700">
+                        <div class="w-16 h-16 bg-blue-50 dark:bg-slate-700 text-blue-500 rounded-full flex items-center justify-center mx-auto mb-3 text-2xl">
+                            <i class="fa-regular fa-calendar-check"></i>
+                        </div>
+                        <h3 class="font-bold text-slate-700 dark:text-slate-200 text-base mb-1">No tasks found!</h3>
+                        <p class="text-xs text-slate-400 max-w-sm mx-auto">Add a new task with its custom timer above to start crushing your goals.</p>
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+        <!-- ================= FOCUS HUB VIEW ================= -->
+        <div id="focusView" class="hidden space-y-6">
+            
+            <div class="max-w-xl mx-auto bg-white dark:bg-slate-800 rounded-3xl p-6 sm:p-8 border border-slate-200/80 dark:border-slate-700/60 shadow-lg text-center relative overflow-hidden">
+                <div class="flex items-center justify-between mb-6">
+                    <span class="text-xs font-bold uppercase tracking-wider text-indigo-500 dark:text-indigo-400 flex items-center gap-2">
+                        <i class="fa-solid fa-stopwatch"></i> Standalone Focus Hub
+                    </span>
+                    <div class="flex gap-1 text-xs">
+                        <button id="pomoWorkBtn" class="px-3 py-1.5 rounded-lg font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300">25m Focus</button>
+                        <button id="pomoBreakBtn" class="px-3 py-1.5 rounded-lg font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300">5m Break</button>
+                    </div>
+                </div>
+
+                <!-- Timer Circle Display -->
+                <div class="py-6">
+                    <div id="timerDisplay" class="text-6xl sm:text-7xl font-black tracking-tight font-mono text-slate-800 dark:text-slate-100 mb-3">
+                        25:00
+                    </div>
+                    <p id="timerLabel" class="text-xs font-semibold tracking-wider uppercase text-slate-400 mb-6">Ready to focus?</p>
+                    
+                    <div class="flex items-center justify-center gap-4">
+                        <button id="timerStartBtn" class="px-7 py-3 bg-indigo-600 hover:bg-indigo-700 active:scale-95 text-white font-semibold rounded-2xl shadow-lg shadow-indigo-500/25 transition flex items-center gap-2 text-sm">
+                            <i class="fa-solid fa-play text-xs"></i> <span id="timerStartText">Start Session</span>
+                        </button>
+                        <button id="timerResetBtn" class="px-5 py-3 bg-slate-100 dark:bg-slate-700 hover:bg-slate-200 dark:hover:bg-slate-600 text-slate-600 dark:text-slate-200 rounded-2xl font-semibold transition text-sm">
+                            <i class="fa-solid fa-rotate-right text-xs"></i> Reset
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Ambient Noise Audio Controls -->
+                <div class="mt-8 pt-6 border-t border-slate-100 dark:border-slate-700/60 text-left">
+                    <div class="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-3">
+                        <span class="font-bold flex items-center gap-2 text-slate-700 dark:text-slate-200">
+                            <i class="fa-solid fa-headphones text-indigo-500"></i> Ambient Focus Sounds
+                        </span>
+                        <span id="ambientStatus" class="text-[10px] uppercase font-bold text-slate-400">Off</span>
+                    </div>
+                    <div class="grid grid-cols-2 gap-3">
+                        <button id="rainSoundBtn" class="py-2 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center gap-2 transition">
+                            <i class="fa-solid fa-cloud-rain text-blue-400"></i> Rain Ambient
+                        </button>
+                        <button id="whiteNoiseBtn" class="py-2 px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700 flex items-center justify-center gap-2 transition">
+                            <i class="fa-solid fa-wave-square text-indigo-400"></i> White Noise
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </main>
+
+    <!-- Notification Toast Box -->
+    <div id="toast" class="fixed bottom-5 right-5 z-50 transform translate-y-20 opacity-0 transition-all duration-300 pointer-events-none bg-slate-800 text-white dark:bg-white dark:text-slate-900 text-xs font-semibold px-4 py-3 rounded-xl shadow-xl flex items-center gap-2">
+        <i id="toastIcon" class="fa-solid fa-circle-check text-emerald-400"></i>
+        <span id="toastMsg">Action completed</span>
+    </div>
+
+    <!-- PWA Installation Guide Modal -->
+    <div id="pwaModal" class="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="bg-white dark:bg-slate-800 rounded-3xl p-6 max-w-md w-full shadow-2xl border border-slate-200 dark:border-slate-700 space-y-4">
+            <div class="flex items-center justify-between">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-500 text-white flex items-center justify-center font-bold text-sm shadow-md">
+                        <i class="fa-solid fa-check-double"></i>
+                    </div>
+                    <h3 class="font-bold text-slate-800 dark:text-slate-100">Add FocusFlow to Home Screen</h3>
+                </div>
+                <button onclick="closePwaModal()" class="text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1">
+                    <i class="fa-solid fa-xmark"></i>
+                </button>
+            </div>
+
+            <div class="bg-slate-50 dark:bg-slate-900/60 p-3.5 rounded-2xl text-xs space-y-3 text-slate-600 dark:text-slate-300 border border-slate-200/60 dark:border-slate-700/50">
+                <p class="font-bold text-blue-600 dark:text-blue-400 text-xs">📱 How to add in Google Chrome:</p>
+                
+                <div class="space-y-2 text-xs text-slate-600 dark:text-slate-300">
+                    <div class="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1">
+                        <strong class="text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                            <i class="fa-brands fa-chrome text-blue-500"></i> Chrome on Android / Phone:
+                        </strong>
+                        <ol class="list-decimal list-inside text-[11px] space-y-1 text-slate-500 dark:text-slate-400 pl-1">
+                            <li>Tap the <strong>3 dots menu</strong> (<i class="fa-solid fa-ellipsis-vertical text-slate-700 dark:text-slate-200"></i>) in the top-right corner of Chrome.</li>
+                            <li>Select <strong>"Add to Home screen"</strong> or <strong>"Install app"</strong>.</li>
+                            <li>Tap <strong>Add</strong> to confirm.</li>
+                        </ol>
+                    </div>
+
+                    <div class="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1">
+                        <strong class="text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                            <i class="fa-brands fa-chrome text-blue-500"></i> Chrome on Desktop / PC:
+                        </strong>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                            Look for the <strong>Install Icon</strong> (<i class="fa-solid fa-circle-down text-blue-500"></i>) on the right side of Chrome's top address bar, or click Chrome's 3 dots menu &rarr; <strong>Save and share</strong> &rarr; <strong>Install FocusFlow</strong>.
+                        </p>
+                    </div>
+
+                    <div class="p-2.5 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 space-y-1">
+                        <strong class="text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                            <i class="fa-brands fa-apple text-slate-700 dark:text-slate-300"></i> iPhone / Safari:
+                        </strong>
+                        <p class="text-[11px] text-slate-500 dark:text-slate-400">
+                            Tap the <strong>Share</strong> button (<i class="fa-solid fa-share-nodes text-blue-500"></i>) at the bottom, scroll down and tap <strong>"Add to Home Screen"</strong> (<i class="fa-regular fa-square-plus text-blue-500"></i>).
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="space-y-2">
+                <button onclick="closePwaModal()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl text-xs transition">
+                    Got It!
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        /* ============================================================
+           WEB AUDIO API SOUND ENGINE (No external audio files needed)
+           ============================================================ */
+        class AudioEngine {
+            constructor() {
+                this.ctx = null;
+                this.muted = false;
+                this.ambientSource = null;
+                this.ambientGain = null;
+                this.currentAmbientType = null;
+            }
+
+            init() {
+                if (!this.ctx) {
+                    const AudioContext = window.AudioContext || window.webkitAudioContext;
+                    this.ctx = new AudioContext();
+                }
+                if (this.ctx.state === 'suspended') {
+                    this.ctx.resume();
+                }
+            }
+
+            // Play synthesized sound effects
+            play(type) {
+                if (this.muted) return;
+                this.init();
+
+                const now = this.ctx.currentTime;
+
+                switch (type) {
+                    case 'add': {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(440, now);
+                        osc.frequency.exponentialRampToValueAtTime(880, now + 0.12);
+                        gain.gain.setValueAtTime(0.12, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.15);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start(now);
+                        osc.stop(now + 0.15);
+                        break;
+                    }
+
+                    case 'complete': {
+                        const notes = [523.25, 659.25, 783.99, 1046.50];
+                        notes.forEach((freq, idx) => {
+                            const osc = this.ctx.createOscillator();
+                            const gain = this.ctx.createGain();
+                            osc.type = 'triangle';
+                            osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+                            gain.gain.setValueAtTime(0.1, now + idx * 0.06);
+                            gain.gain.exponentialRampToValueAtTime(0.001, now + idx * 0.06 + 0.35);
+                            osc.connect(gain);
+                            gain.connect(this.ctx.destination);
+                            osc.start(now + idx * 0.06);
+                            osc.stop(now + idx * 0.06 + 0.35);
+                        });
+                        break;
+                    }
+
+                    case 'delete': {
+                        const osc = this.ctx.createOscillator();
+                        const gain = this.ctx.createGain();
+                        osc.type = 'sine';
+                        osc.frequency.setValueAtTime(320, now);
+                        osc.frequency.exponentialRampToValueAtTime(120, now + 0.1);
+                        gain.gain.setValueAtTime(0.12, now);
+                        gain.gain.exponentialRampToValueAtTime(0.001, now + 0.1);
+                        osc.connect(gain);
+                        gain.connect(this.ctx.destination);
+                        osc.start(now);
+                        osc.stop(now + 0.1);
+                        break;
+                    }
+
+                    case 'alarm': {
+                        for (let i = 0; i < 3; i++) {
+                            const osc = this.ctx.createOscillator();
+                            const gain = this.ctx.createGain();
+                            osc.type = 'sine';
+                            osc.frequency.setValueAtTime(880, now + i * 0.2);
+                            gain.gain.setValueAtTime(0.2, now + i * 0.2);
+                            gain.gain.exponentialRampToValueAtTime(0.001, now + i * 0.2 + 0.18);
+                            osc.connect(gain);
+                            gain.connect(this.ctx.destination);
+                            osc.start(now + i * 0.2);
+                            osc.stop(now + i * 0.2 + 0.18);
+                        }
+                        break;
+                    }
+                }
+            }
+
+            toggleAmbient(type) {
+                this.init();
+
+                if (this.currentAmbientType === type) {
+                    this.stopAmbient();
+                    return false;
+                }
+
+                this.stopAmbient();
+                this.currentAmbientType = type;
+
+                const bufferSize = 2 * this.ctx.sampleRate;
+                const noiseBuffer = this.ctx.createBuffer(1, bufferSize, this.ctx.sampleRate);
+                const output = noiseBuffer.getChannelData(0);
+
+                for (let i = 0; i < bufferSize; i++) {
+                    output[i] = Math.random() * 2 - 1;
+                }
+
+                const whiteNoise = this.ctx.createBufferSource();
+                whiteNoise.buffer = noiseBuffer;
+                whiteNoise.loop = true;
+
+                const filter = this.ctx.createBiquadFilter();
+                filter.type = type === 'rain' ? 'lowpass' : 'bandpass';
+                filter.frequency.value = type === 'rain' ? 800 : 1200;
+
+                this.ambientGain = this.ctx.createGain();
+                this.ambientGain.gain.setValueAtTime(0.03, this.ctx.currentTime);
+
+                whiteNoise.connect(filter);
+                filter.connect(this.ambientGain);
+                this.ambientGain.connect(this.ctx.destination);
+
+                whiteNoise.start();
+                this.ambientSource = whiteNoise;
+                return true;
+            }
+
+            stopAmbient() {
+                if (this.ambientSource) {
+                    try { this.ambientSource.stop(); } catch (e) {}
+                    this.ambientSource = null;
+                }
+                this.currentAmbientType = null;
+            }
+        }
+
+        const sound = new AudioEngine();
+    </script>
+
+    <script>
+        /* ============================================================
+           APPLICATION STATE & LOCAL STORAGE
+           ============================================================ */
+        let tasks = JSON.parse(localStorage.getItem('focusflow_tasks')) || [
+            { id: 101, title: 'Complete Calculus Chapter 4 Exercises', category: 'homework', priority: 'high', time: '14:00', durationMins: 25, remainingSecs: 25 * 60, isTimerRunning: false, completed: false, createdAt: Date.now() },
+            { id: 102, title: 'Study Biology Flashcards', category: 'study', priority: 'medium', time: '16:30', durationMins: 15, remainingSecs: 15 * 60, isTimerRunning: false, completed: true, createdAt: Date.now() - 1000 },
+            { id: 103, title: 'Full Body HIIT Workout', category: 'workout', priority: 'high', time: '18:00', durationMins: 30, remainingSecs: 30 * 60, isTimerRunning: false, completed: false, createdAt: Date.now() - 2000 }
+        ];
+
+        let habits = JSON.parse(localStorage.getItem('focusflow_habits')) || [
+            { id: 'h1', title: 'Hydration 2L', icon: 'fa-glass-water', completed: false },
+            { id: 'h2', title: 'Read 15 Mins', icon: 'fa-book', completed: true },
+            { id: 'h3', title: 'Morning Stretch', icon: 'fa-person-stretching', completed: false },
+            { id: 'h4', title: 'Mindfulness', icon: 'fa-brain', completed: false }
+        ];
+
+        let currentView = 'home'; // 'home', 'planner', 'focus'
+        let currentFilter = 'all';
+        let searchQuery = '';
+        let streak = parseInt(localStorage.getItem('focusflow_streak')) || 1;
+        let totalFocusSecsTracked = parseInt(localStorage.getItem('focusflow_focustime')) || 1500;
+
+        // General Standalone Pomodoro State
+        let timerSeconds = 25 * 60;
+        let timerInterval = null;
+        let isTimerRunning = false;
+        let timerMode = 'work';
+
+        // Global interval ticker for task individual timers
+        let taskTimerInterval = null;
+
+        /* ============================================================
+           DOM ELEMENTS
+           ============================================================ */
+        const taskForm = document.getElementById('taskForm');
+        const taskInput = document.getElementById('taskInput');
+        const categorySelect = document.getElementById('categorySelect');
+        const timeInput = document.getElementById('timeInput');
+        const durationInput = document.getElementById('durationInput');
+        const prioritySelect = document.getElementById('prioritySelect');
+        const taskList = document.getElementById('taskList');
+        const homeTaskList = document.getElementById('homeTaskList');
+        const emptyState = document.getElementById('emptyState');
+        const searchInput = document.getElementById('searchInput');
+        const clearCompletedBtn = document.getElementById('clearCompletedBtn');
+
+        const currentDateDisplay = document.getElementById('currentDateDisplay');
+        const streakCount = document.getElementById('streakCount');
+        const soundToggleBtn = document.getElementById('soundToggleBtn');
+        const soundIcon = document.getElementById('soundIcon');
+        const themeToggleBtn = document.getElementById('themeToggleBtn');
+        const themeIcon = document.getElementById('themeIcon');
+
+        // Progress Stats
+        const progressBar = document.getElementById('progressBar');
+        const progressPercent = document.getElementById('progressPercent');
+        const statTotal = document.getElementById('statTotal');
+        const statDone = document.getElementById('statDone');
+        const statPending = document.getElementById('statPending');
+
+        // Standalone Timer
+        const timerDisplay = document.getElementById('timerDisplay');
+        const timerLabel = document.getElementById('timerLabel');
+        const timerStartBtn = document.getElementById('timerStartBtn');
+        const timerStartText = document.getElementById('timerStartText');
+        const timerResetBtn = document.getElementById('timerResetBtn');
+        const pomoWorkBtn = document.getElementById('pomoWorkBtn');
+        const pomoBreakBtn = document.getElementById('pomoBreakBtn');
+
+        const rainSoundBtn = document.getElementById('rainSoundBtn');
+        const whiteNoiseBtn = document.getElementById('whiteNoiseBtn');
+        const ambientStatus = document.getElementById('ambientStatus');
+
+        /* ============================================================
+           INITIALIZATION & NAVIGATION
+           ============================================================ */
+        function initApp() {
+            initPwa();
+
+            const options = { weekday: 'long', month: 'short', day: 'numeric', year: 'numeric' };
+            currentDateDisplay.innerText = new Date().toLocaleDateString('en-US', options);
+
+            if (streakCount) streakCount.innerText = streak;
+
+            // Check Theme
+            if (localStorage.getItem('focusflow_theme') === 'dark' || 
+                (!('focusflow_theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+                document.documentElement.classList.add('dark');
+                themeIcon.className = 'fa-solid fa-sun text-sm text-amber-400';
+            } else {
+                document.documentElement.classList.remove('dark');
+                themeIcon.className = 'fa-solid fa-moon text-sm';
+            }
+
+            // Start global tick for running task timers
+            startGlobalTaskTicker();
+
+            renderTasks();
+            renderHabits();
+            updateStats();
+            updateHomeDashboard();
+        }
+
+        // Switch between Home, Planner, and Focus Hub Views
+        window.switchView = function(view) {
+            currentView = view;
+
+            document.getElementById('homeView').classList.add('hidden');
+            document.getElementById('plannerView').classList.add('hidden');
+            document.getElementById('focusView').classList.add('hidden');
+
+            // Reset tab styles desktop
+            document.getElementById('navHomeBtn').className = "px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white";
+            document.getElementById('navPlannerBtn').className = "px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white";
+            document.getElementById('navFocusBtn').className = "px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white";
+
+            // Reset mobile tab styles
+            document.getElementById('mobileNavHome').className = "flex flex-col items-center gap-1 font-semibold text-slate-500 dark:text-slate-400";
+            document.getElementById('mobileNavPlanner').className = "flex flex-col items-center gap-1 font-semibold text-slate-500 dark:text-slate-400";
+            document.getElementById('mobileNavFocus').className = "flex flex-col items-center gap-1 font-semibold text-slate-500 dark:text-slate-400";
+
+            if (view === 'home') {
+                document.getElementById('homeView').classList.remove('hidden');
+                document.getElementById('navHomeBtn').className = "px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm";
+                document.getElementById('mobileNavHome').className = "flex flex-col items-center gap-1 font-semibold text-blue-600 dark:text-blue-400";
+                updateHomeDashboard();
+            } else if (view === 'planner') {
+                document.getElementById('plannerView').classList.remove('hidden');
+                document.getElementById('navPlannerBtn').className = "px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm";
+                document.getElementById('mobileNavPlanner').className = "flex flex-col items-center gap-1 font-semibold text-blue-600 dark:text-blue-400";
+            } else if (view === 'focus') {
+                document.getElementById('focusView').classList.remove('hidden');
+                document.getElementById('navFocusBtn').className = "px-4 py-1.5 rounded-lg text-xs font-bold transition flex items-center gap-2 bg-white dark:bg-slate-700 text-blue-600 dark:text-blue-400 shadow-sm";
+                document.getElementById('mobileNavFocus').className = "flex flex-col items-center gap-1 font-semibold text-blue-600 dark:text-blue-400";
+            }
+        };
+
+        /* ============================================================
+           GLOBAL INDIVIDUAL TASK TIMERS TICKER
+           ============================================================ */
+        function startGlobalTaskTicker() {
+            if (taskTimerInterval) clearInterval(taskTimerInterval);
+
+            taskTimerInterval = setInterval(() => {
+                let stateChanged = false;
+
+                tasks.forEach(task => {
+                    if (task.isTimerRunning && !task.completed) {
+                        stateChanged = true;
+                        totalFocusSecsTracked++;
+                        localStorage.setItem('focusflow_focustime', totalFocusSecsTracked);
+
+                        if (task.remainingSecs > 0) {
+                            task.remainingSecs--;
+                        } else {
+                            // Task timer reached 0!
+                            task.isTimerRunning = false;
+                            sound.play('alarm');
+                            confetti({ particleCount: 50, spread: 70, origin: { y: 0.7 } });
+                            showToast(`Timer completed for "${task.title}"!`, 'fa-bell text-amber-400');
+                        }
+                    }
+                });
+
+                if (stateChanged) {
+                    saveTasks();
+                    updateTimerDisplaysOnly();
+                }
+            }, 1000);
+        }
+
+        // Efficient DOM update for active task timer elements without rebuilding whole list
+        function updateTimerDisplaysOnly() {
+            tasks.forEach(task => {
+                const elements = document.querySelectorAll(`[data-task-timer-id="${task.id}"]`);
+                const formatted = formatSeconds(task.remainingSecs);
+                elements.forEach(el => {
+                    el.innerText = formatted;
+                });
+
+                const playBtns = document.querySelectorAll(`[data-task-btn-id="${task.id}"]`);
+                playBtns.forEach(btn => {
+                    if (task.isTimerRunning) {
+                        btn.innerHTML = `<i class="fa-solid fa-pause text-xs"></i>`;
+                        btn.title = "Pause Timer";
+                    } else {
+                        btn.innerHTML = `<i class="fa-solid fa-play text-xs"></i>`;
+                        btn.title = "Start Timer";
+                    }
+                });
+            });
+
+            // Also update home view focus metric
+            document.getElementById('homeMetricFocusTime').innerText = `${Math.floor(totalFocusSecsTracked / 60)}m`;
+        }
+
+        function formatSeconds(secs) {
+            const m = Math.floor(secs / 60);
+            const s = secs % 60;
+            return `${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+        }
+
+        /* ============================================================
+           TASK STORAGE & RENDERING LOGIC
+           ============================================================ */
+        function saveTasks() {
+            localStorage.setItem('focusflow_tasks', JSON.stringify(tasks));
+            updateStats();
+        }
+
+        function getCategoryBadge(cat) {
+            const badges = {
+                homework: { text: 'Homework', class: 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border-amber-500/20', icon: 'fa-book-open' },
+                study: { text: 'Study', class: 'bg-purple-500/10 text-purple-600 dark:text-purple-400 border-purple-500/20', icon: 'fa-graduation-cap' },
+                workout: { text: 'Workout', class: 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border-emerald-500/20', icon: 'fa-dumbbell' },
+                habit: { text: 'Habit', class: 'bg-rose-500/10 text-rose-600 dark:text-rose-400 border-rose-500/20', icon: 'fa-fire' },
+                other: { text: 'Other', class: 'bg-slate-500/10 text-slate-600 dark:text-slate-400 border-slate-500/20', icon: 'fa-bullseye' }
+            };
+            return badges[cat] || badges.other;
+        }
+
+        function getPriorityBadge(prio) {
+            if (prio === 'high') return '<span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-rose-500/10 text-rose-600 dark:text-rose-400">High Prio</span>';
+            if (prio === 'low') return '<span class="text-[10px] font-bold px-2 py-0.5 rounded-md bg-slate-500/10 text-slate-500 dark:text-slate-400">Low Prio</span>';
+            return '';
+        }
+
+        function escapeHtml(str) {
+            return str.replace(/[&<>"']/g, function(m) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+            });
+        }
+
+        // Create HTML string for a single Task card with its dedicated timer controls
+        function createTaskCardHTML(task) {
+            const badge = getCategoryBadge(task.category);
+            const prioBadge = getPriorityBadge(task.priority);
+            const formattedTime = task.time ? `<span class="text-xs text-slate-400 font-medium flex items-center gap-1 inline-flex"><i class="fa-regular fa-clock text-[10px]"></i> ${task.time}</span>` : '';
+            const isFinished = task.remainingSecs === 0;
+
+            return `
+                <div class="task-enter p-4 rounded-2xl border transition-all duration-200 bg-white dark:bg-slate-800 ${
+                    task.completed 
+                    ? 'border-slate-200/60 dark:border-slate-800/80 opacity-60' 
+                    : task.isTimerRunning 
+                    ? 'border-indigo-500 ring-1 ring-indigo-500/30 shadow-md' 
+                    : 'border-slate-200/80 dark:border-slate-700/60 shadow-sm hover:border-blue-400/50'
+                }">
+                    <div class="flex items-center justify-between gap-3">
+                        
+                        <!-- Checkbox & Info -->
+                        <div class="flex items-center gap-3 flex-grow min-w-0">
+                            <button onclick="toggleTask(${task.id})" class="w-6 h-6 rounded-lg border-2 flex items-center justify-center transition-all ${
+                                task.completed 
+                                ? 'bg-emerald-500 border-emerald-500 text-white' 
+                                : 'border-slate-300 dark:border-slate-600 hover:border-blue-500'
+                            }">
+                                ${task.completed ? '<i class="fa-solid fa-check text-xs"></i>' : ''}
+                            </button>
+
+                            <div class="flex-grow min-w-0">
+                                <div class="flex items-center gap-2 flex-wrap mb-1">
+                                    <span class="text-[11px] font-bold px-2 py-0.5 rounded-md border flex items-center gap-1 ${badge.class}">
+                                        <i class="fa-solid ${badge.icon} text-[10px]"></i> ${badge.text}
+                                    </span>
+                                    ${prioBadge}
+                                    ${formattedTime}
+                                </div>
+                                <h4 class="text-sm font-semibold truncate ${task.completed ? 'line-through text-slate-400 dark:text-slate-500' : 'text-slate-800 dark:text-slate-100'}">
+                                    ${escapeHtml(task.title)}
+                                </h4>
+                            </div>
+                        </div>
+
+                        <!-- Individual Task Timer Controls Widget -->
+                        <div class="flex items-center gap-2 bg-slate-50 dark:bg-slate-900 px-3 py-1.5 rounded-xl border border-slate-200/70 dark:border-slate-700/50">
+                            <div class="text-right">
+                                <div class="text-xs font-mono font-extrabold ${task.isTimerRunning ? 'text-indigo-600 dark:text-indigo-400 animate-pulse' : isFinished ? 'text-rose-500' : 'text-slate-700 dark:text-slate-300'}" data-task-timer-id="${task.id}">
+                                    ${formatSeconds(task.remainingSecs)}
+                                </div>
+                                <div class="text-[9px] font-semibold uppercase text-slate-400">Timer</div>
+                            </div>
+
+                            <button onclick="toggleTaskTimer(${task.id})" data-task-btn-id="${task.id}" ${task.completed ? 'disabled' : ''} class="w-7 h-7 rounded-lg ${task.isTimerRunning ? 'bg-amber-500 text-white' : 'bg-indigo-600 hover:bg-indigo-700 text-white'} flex items-center justify-center transition shadow-sm disabled:opacity-40" title="${task.isTimerRunning ? 'Pause Timer' : 'Start Timer'}">
+                                <i class="fa-solid ${task.isTimerRunning ? 'fa-pause' : 'fa-play'} text-xs"></i>
+                            </button>
+
+                            <button onclick="resetTaskTimer(${task.id})" ${task.completed ? 'disabled' : ''} class="p-1 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 transition disabled:opacity-40" title="Reset Timer">
+                                <i class="fa-solid fa-rotate-right text-[11px]"></i>
+                            </button>
+
+                            <button onclick="deleteTask(${task.id})" class="p-1 text-slate-400 hover:text-rose-500 transition ml-1" title="Delete Task">
+                                <i class="fa-regular fa-trash-can text-[11px]"></i>
+                            </button>
+                        </div>
+
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderTasks() {
+            taskList.innerHTML = '';
+
+            const filteredTasks = tasks.filter(t => {
+                const matchesFilter = currentFilter === 'all' || t.category === currentFilter;
+                const matchesSearch = t.title.toLowerCase().includes(searchQuery.toLowerCase());
+                return matchesFilter && matchesSearch;
+            });
+
+            if (filteredTasks.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+            }
+
+            filteredTasks.sort((a, b) => a.completed - b.completed || b.createdAt - a.createdAt);
+
+            filteredTasks.forEach(task => {
+                taskList.insertAdjacentHTML('beforeend', createTaskCardHTML(task));
+            });
+        }
+
+        /* ============================================================
+           HOME DASHBOARD SPECIFIC RENDERING
+           ============================================================ */
+        function updateHomeDashboard() {
+            // Update Home Greeting based on time of day
+            const hour = new Date().getHours();
+            let greeting = "Good Morning, Achiever! ☀️";
+            if (hour >= 12 && hour < 17) greeting = "Good Afternoon, Achiever! 🌤️";
+            else if (hour >= 17) greeting = "Good Evening, Achiever! 🌙";
+            document.getElementById('homeGreeting').innerText = greeting;
+
+            // Render top 4 pending tasks in home screen
+            homeTaskList.innerHTML = '';
+            const pendingTasks = tasks.filter(t => !t.completed).slice(0, 4);
+
+            if (pendingTasks.length === 0) {
+                homeTaskList.innerHTML = `
+                    <div class="text-center py-6 text-slate-400 text-xs">
+                        <i class="fa-regular fa-circle-check text-2xl text-emerald-400 mb-2 block"></i>
+                        Awesome! All pending tasks are completed.
+                    </div>
+                `;
+            } else {
+                pendingTasks.forEach(task => {
+                    homeTaskList.insertAdjacentHTML('beforeend', createTaskCardHTML(task));
+                });
+            }
+
+            // Update Metrics
+            const total = tasks.length;
+            const done = tasks.filter(t => t.completed).length;
+            const pending = total - done;
+            const percent = total === 0 ? 0 : Math.round((done / total) * 100);
+
+            document.getElementById('homeMetricPercent').innerText = `${percent}%`;
+            document.getElementById('homeMetricRatio').innerText = `${done} of ${total} tasks completed`;
+            document.getElementById('homeMetricPending').innerText = pending;
+            document.getElementById('homeMetricStreak').innerText = streak;
+            document.getElementById('homeMetricFocusTime').innerText = `${Math.floor(totalFocusSecsTracked / 60)}m`;
+        }
+
+        /* ============================================================
+           HABIT TRACKER COMPONENT
+           ============================================================ */
+        function renderHabits() {
+            const container = document.getElementById('habitsContainer');
+            if (!container) return;
+            container.innerHTML = '';
+
+            habits.forEach(h => {
+                const chip = document.createElement('button');
+                chip.onclick = () => toggleHabit(h.id);
+                chip.className = `p-3 rounded-xl border text-left transition flex items-center justify-between ${
+                    h.completed 
+                    ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-700 dark:text-emerald-400' 
+                    : 'bg-slate-50 dark:bg-slate-900 border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-blue-400'
+                }`;
+
+                chip.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <i class="fa-solid ${h.icon} ${h.completed ? 'text-emerald-500' : 'text-slate-400'} text-xs"></i>
+                        <span class="text-xs font-semibold">${escapeHtml(h.title)}</span>
+                    </div>
+                    <i class="fa-solid ${h.completed ? 'fa-circle-check text-emerald-500' : 'fa-circle text-slate-300 dark:text-slate-600'} text-xs"></i>
+                `;
+                container.appendChild(chip);
+            });
+        }
+
+        function toggleHabit(id) {
+            const h = habits.find(item => item.id === id);
+            if (h) {
+                h.completed = !h.completed;
+                localStorage.setItem('focusflow_habits', JSON.stringify(habits));
+                renderHabits();
+                if (h.completed) {
+                    sound.play('complete');
+                    showToast(`Habit "${h.title}" completed!`, 'fa-heart text-rose-400');
+                }
+            }
+        }
+
+        /* ============================================================
+           INDIVIDUAL TASK TIMER CONTROL ACTIONS
+           ============================================================ */
+        window.toggleTaskTimer = function(id) {
+            sound.init();
+            const task = tasks.find(t => t.id === id);
+            if (!task || task.completed) return;
+
+            task.isTimerRunning = !task.isTimerRunning;
+            saveTasks();
+            renderTasks();
+            if (currentView === 'home') updateHomeDashboard();
+
+            if (task.isTimerRunning) {
+                showToast(`Timer started for "${task.title}"`, 'fa-play text-indigo-400');
+            } else {
+                showToast(`Timer paused`, 'fa-pause text-amber-400');
+            }
+        };
+
+        window.resetTaskTimer = function(id) {
+            const task = tasks.find(t => t.id === id);
+            if (!task) return;
+
+            task.isTimerRunning = false;
+            task.remainingSecs = (task.durationMins || 25) * 60;
+            saveTasks();
+            renderTasks();
+            if (currentView === 'home') updateHomeDashboard();
+            showToast(`Timer reset to ${task.durationMins}m`, 'fa-rotate-right text-slate-400');
+        };
+
+        /* ============================================================
+           TASK CRUD ACTIONS
+           ============================================================ */
+        taskForm.addEventListener('submit', () => {
+            const title = taskInput.value.trim();
+            if (!title) return;
+
+            const duration = parseInt(durationInput.value) || 25;
+
+            const newTask = {
+                id: Date.now(),
+                title,
+                category: categorySelect.value,
+                priority: prioritySelect.value,
+                time: timeInput.value,
+                durationMins: duration,
+                remainingSecs: duration * 60,
+                isTimerRunning: false,
+                completed: false,
+                createdAt: Date.now()
+            };
+
+            tasks.unshift(newTask);
+            saveTasks();
+            renderTasks();
+            if (currentView === 'home') updateHomeDashboard();
+            sound.play('add');
+
+            taskInput.value = '';
+            timeInput.value = '';
+            durationInput.value = '25';
+            showToast('New task with timer created!', 'fa-circle-check text-emerald-400');
+        });
+
+        window.toggleTask = function(id) {
+            const task = tasks.find(t => t.id === id);
+            if (task) {
+                task.completed = !task.completed;
+                if (task.completed) task.isTimerRunning = false;
+                saveTasks();
+                renderTasks();
+                if (currentView === 'home') updateHomeDashboard();
+
+                if (task.completed) {
+                    sound.play('complete');
+                    confetti({ particleCount: 40, spread: 60, origin: { y: 0.85 } });
+                }
+            }
+        };
+
+        window.deleteTask = function(id) {
+            tasks = tasks.filter(t => t.id !== id);
+            saveTasks();
+            renderTasks();
+            if (currentView === 'home') updateHomeDashboard();
+            sound.play('delete');
+            showToast('Task removed', 'fa-trash-can text-rose-400');
+        };
+
+        clearCompletedBtn.addEventListener('click', () => {
+            const countBefore = tasks.length;
+            tasks = tasks.filter(t => !t.completed);
+            if (tasks.length < countBefore) {
+                saveTasks();
+                renderTasks();
+                if (currentView === 'home') updateHomeDashboard();
+                sound.play('delete');
+                showToast('Cleared completed tasks', 'fa-trash-can text-amber-400');
+            }
+        });
+
+        /* ============================================================
+           STATS & PROGRESS CALCULATION
+           ============================================================ */
+        function updateStats() {
+            const total = tasks.length;
+            const done = tasks.filter(t => t.completed).length;
+            const pending = total - done;
+            const percent = total === 0 ? 0 : Math.round((done / total) * 100);
+
+            statTotal.innerText = total;
+            statDone.innerText = done;
+            statPending.innerText = pending;
+            progressPercent.innerText = `${percent}%`;
+            progressBar.style.width = `${percent}%`;
+        }
+
+        /* ============================================================
+           STANDALONE POMODORO FOCUS HUB TIMER
+           ============================================================ */
+        function updateTimerDisplay() {
+            const mins = Math.floor(timerSeconds / 60);
+            const secs = timerSeconds % 60;
+            const formatted = `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+            timerDisplay.innerText = formatted;
+            document.getElementById('homeMiniTimer').innerText = formatted;
+        }
+
+        function startTimer() {
+            if (isTimerRunning) {
+                clearInterval(timerInterval);
+                isTimerRunning = false;
+                timerStartText.innerText = 'Start Session';
+                timerStartBtn.classList.replace('bg-amber-600', 'bg-indigo-600');
+            } else {
+                sound.init();
+                isTimerRunning = true;
+                timerStartText.innerText = 'Pause';
+                timerStartBtn.classList.replace('bg-indigo-600', 'bg-amber-600');
+
+                timerInterval = setInterval(() => {
+                    if (timerSeconds > 0) {
+                        timerSeconds--;
+                        totalFocusSecsTracked++;
+                        localStorage.setItem('focusflow_focustime', totalFocusSecsTracked);
+                        updateTimerDisplay();
+                    } else {
+                        clearInterval(timerInterval);
+                        isTimerRunning = false;
+                        sound.play('alarm');
+                        confetti({ particleCount: 100, spread: 80, origin: { y: 0.6 } });
+
+                        if (timerMode === 'work') {
+                            showToast('Focus Session complete! Time for a short break.', 'fa-trophy text-amber-400');
+                            setTimerMode('break');
+                        } else {
+                            showToast('Break finished! Ready to focus again?', 'fa-bolt text-blue-400');
+                            setTimerMode('work');
+                        }
+                    }
+                }, 1000);
+            }
+        }
+
+        function resetTimer() {
+            clearInterval(timerInterval);
+            isTimerRunning = false;
+            timerStartText.innerText = 'Start Session';
+            timerStartBtn.classList.replace('bg-amber-600', 'bg-indigo-600');
+            timerSeconds = timerMode === 'work' ? 25 * 60 : 5 * 60;
+            updateTimerDisplay();
+        }
+
+        function setTimerMode(mode) {
+            timerMode = mode;
+            if (mode === 'work') {
+                pomoWorkBtn.className = 'px-3 py-1.5 rounded-lg font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300';
+                pomoBreakBtn.className = 'px-3 py-1.5 rounded-lg font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300';
+                timerLabel.innerText = 'Deep Focus Session';
+                timerSeconds = 25 * 60;
+            } else {
+                pomoBreakBtn.className = 'px-3 py-1.5 rounded-lg font-medium bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300';
+                pomoWorkBtn.className = 'px-3 py-1.5 rounded-lg font-medium bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300';
+                timerLabel.innerText = 'Rest & Recharge Break';
+                timerSeconds = 5 * 60;
+            }
+            resetTimer();
+        }
+
+        timerStartBtn.addEventListener('click', startTimer);
+        timerResetBtn.addEventListener('click', resetTimer);
+        pomoWorkBtn.addEventListener('click', () => setTimerMode('work'));
+        pomoBreakBtn.addEventListener('click', () => setTimerMode('break'));
+
+        /* ============================================================
+           AMBIENT AUDIO CONTROLS
+           ============================================================ */
+        rainSoundBtn.addEventListener('click', () => {
+            const active = sound.toggleAmbient('rain');
+            updateAmbientUI(active ? 'Rain Active' : 'Off');
+        });
+
+        whiteNoiseBtn.addEventListener('click', () => {
+            const active = sound.toggleAmbient('white');
+            updateAmbientUI(active ? 'White Noise' : 'Off');
+        });
+
+        function updateAmbientUI(text) {
+            ambientStatus.innerText = text;
+            if (text !== 'Off') {
+                ambientStatus.className = 'text-[10px] uppercase font-bold text-indigo-500 animate-pulse';
+            } else {
+                ambientStatus.className = 'text-[10px] uppercase font-bold text-slate-400';
+            }
+        }
+
+        /* ============================================================
+           FILTERS, SEARCH & UI CONTROLS
+           ============================================================ */
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.filter-btn').forEach(b => {
+                    b.className = 'filter-btn px-3 py-1.5 rounded-lg font-medium text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 transition whitespace-nowrap';
+                });
+                e.target.className = 'filter-btn px-3 py-1.5 rounded-lg font-semibold bg-blue-600 text-white transition whitespace-nowrap';
+                currentFilter = e.target.dataset.filter;
+                renderTasks();
+            });
+        });
+
+        searchInput.addEventListener('input', (e) => {
+            searchQuery = e.target.value;
+            renderTasks();
+        });
+
+        soundToggleBtn.addEventListener('click', () => {
+            sound.muted = !sound.muted;
+            if (sound.muted) {
+                soundIcon.className = 'fa-solid fa-volume-xmark text-sm text-rose-500';
+                showToast('Sound Muted', 'fa-volume-xmark text-rose-400');
+            } else {
+                soundIcon.className = 'fa-solid fa-volume-high text-sm';
+                sound.play('add');
+                showToast('Sound Enabled', 'fa-volume-high text-emerald-400');
+            }
+        });
+
+        themeToggleBtn.addEventListener('click', () => {
+            const isDark = document.documentElement.classList.toggle('dark');
+            localStorage.setItem('focusflow_theme', isDark ? 'dark' : 'light');
+            themeIcon.className = isDark ? 'fa-solid fa-sun text-sm text-amber-400' : 'fa-solid fa-moon text-sm';
+        });
+
+        let toastTimeout;
+        function showToast(msg, iconClass) {
+            const toast = document.getElementById('toast');
+            const toastMsg = document.getElementById('toastMsg');
+            const toastIcon = document.getElementById('toastIcon');
+
+            toastMsg.innerText = msg;
+            toastIcon.className = `fa-solid ${iconClass}`;
+
+            toast.classList.remove('translate-y-20', 'opacity-0', 'pointer-events-none');
+            
+            clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => {
+                toast.classList.add('translate-y-20', 'opacity-0', 'pointer-events-none');
+            }, 2500);
+        }
+
+        /* ============================================================
+           PWA MANIFEST & SERVICE WORKER REGISTRATION
+           ============================================================ */
+        let deferredPrompt = null;
+
+        function initPwa() {
+            // Generate dynamic Web App Manifest
+            const manifest = {
+                name: "FocusFlow - Daily Life & Study Planner",
+                short_name: "FocusFlow",
+                description: "Daily Life & Study Planner with Focus Timers and Habit Tracker",
+                start_url: window.location.href,
+                display: "standalone",
+                background_color: "#0f172a",
+                theme_color: "#2563eb",
+                icons: [
+                    {
+                        src: "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='512' height='512' viewBox='0 0 512 512'><rect width='512' height='512' rx='120' fill='%232563eb'/><path fill='white' d='M381.25 150.5 217.25 314.5 130.75 228 93.25 265.5 217.25 389.5 418.75 188z'/></svg>",
+                        sizes: "512x512",
+                        type: "image/svg+xml",
+                        purpose: "any maskable"
+                    }
+                ]
+            };
+
+            try {
+                const manifestBlob = new Blob([JSON.stringify(manifest)], { type: 'application/manifest+json' });
+                const manifestUrl = URL.createObjectURL(manifestBlob);
+                const manifestLink = document.getElementById('manifestLink');
+                if (manifestLink) manifestLink.setAttribute('href', manifestUrl);
+            } catch (e) {
+                console.log('Manifest creation skipped on local protocol', e);
+            }
+
+            // Capture PWA Install Prompt
+            window.addEventListener('beforeinstallprompt', (e) => {
+                e.preventDefault();
+                deferredPrompt = e;
+            });
+        }
+
+        window.handlePwaInstallClick = async function() {
+            if (deferredPrompt) {
+                deferredPrompt.prompt();
+                const { outcome } = await deferredPrompt.userChoice;
+                if (outcome === 'accepted') {
+                    showToast('FocusFlow installed on home screen!', 'fa-mobile-screen text-emerald-400');
+                }
+                deferredPrompt = null;
+            } else {
+                showPwaModal();
+            }
+        };
+
+        window.showPwaModal = function() {
+            const modal = document.getElementById('pwaModal');
+            if (modal) modal.classList.remove('hidden');
+        };
+
+        window.closePwaModal = function() {
+            const modal = document.getElementById('pwaModal');
+            if (modal) modal.classList.add('hidden');
+        };
+
+        window.addEventListener('DOMContentLoaded', initApp);
+    </script>
+</body>
+</html>
